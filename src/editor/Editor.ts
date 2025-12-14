@@ -115,7 +115,7 @@ export class Editor {
     }
 
 
-  
+
 
     async onCompile(view: EditorView): Promise<boolean> {
         this.renderer.clear();
@@ -494,16 +494,17 @@ export class Editor {
 
         // Render the LiveSteam Component 
 
-        const litestreamComponent = new LiveStreamComponent(DOMUtils.get("#launch-livestream"));
+        const livestreamComponent = new LiveStreamComponent(DOMUtils.get("#launch-livestream"));
 
-        litestreamComponent.render().catch ( () => {
-                DOMUtils.on("click","#btn-launch-livestream",() => {
-
-                });
-
-
+        livestreamComponent.render().then(() => {
+            setTimeout(() => {
+                const launchStreamButton = DOMUtils.get<HTMLButtonElement>("#launch-settings-button");
+                const connectionFailed = livestreamComponent.factory?.IsConnected;
+                if (!connectionFailed) {
+                    launchStreamButton.disabled = true;
+                }
+            }, 2000);
         });
-
     }
 
 

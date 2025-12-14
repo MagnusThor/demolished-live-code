@@ -34,6 +34,7 @@ export class LiveStreamComponent {
     canvasStream: any;
     editorCanvas: HTMLCanvasElement | undefined;
     streamUUID: string;
+    factory: ClientFactory;
 
     constructor(private parent: HTMLElement) {
 
@@ -44,7 +45,8 @@ export class LiveStreamComponent {
         const scheme = location.href.includes("https") ? "wss" : "ws";
         const factory = new ClientFactory(`${scheme}:/${location.host}`, ["conferenceController"]);
 
-     
+       
+      
 
         factory.onOpen = (streamController: Controller) => {
             this.rtcFactory = new ExtendWebRTCFactory(streamController, RTC_CONFIG);
@@ -74,6 +76,9 @@ export class LiveStreamComponent {
 
             streamController.connect();
         };
+
+        this.factory = factory;
+        
     }
 
     private updateLaunchButtonUI(): void {
@@ -282,6 +287,7 @@ export class LiveStreamComponent {
 
                     });
                 });
+       
 
 
             } catch (error) {

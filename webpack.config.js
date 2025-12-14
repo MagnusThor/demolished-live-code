@@ -2,11 +2,11 @@ const webpack = require('webpack');
 const path = require('path');
 
 module.exports = {
-    mode: "development",
+    mode: "production",
     watch: false,
     entry: {
-        "demolished-live-code": "/build/editor/Editor.js",
-        "demolished-live-spectate":"/build/spectator/SpectatorClient.js"
+        "demolished-live-code": "/build/src/editor/Editor.js",
+        "demolished-live-spectate":"/build/src/spectator/SpectatorClient.js"
 
     },
     output: {

@@ -15,6 +15,7 @@ export class SpectatorClient {
     rtcFactory: ExtendWebRTCFactory | undefined;
     private remoteStream: RemoteStream | undefined
     streamUUID: string;
+    factory: ClientFactory | undefined;
 
 
     constructor(private parent: HTMLElement) {
@@ -28,7 +29,18 @@ export class SpectatorClient {
 
     private initializeWebRTC(): void {
         const scheme = location.href.includes("https") ? "wss" : "ws";
+
+
+
+
         const factory = new ClientFactory(`${scheme}:/${location.host}`, ["conferenceController"]);
+
+        setTimeout(() => {
+            const connectionFailed = factory.IsConnected;
+            console.log(`connection to server failed: ${connectionFailed}`)
+        }, 2000);
+
+
 
         factory.onOpen = (streamController: Controller) => {
             this.rtcFactory = new ExtendWebRTCFactory(streamController, RTC_CONFIG);
@@ -78,6 +90,9 @@ export class SpectatorClient {
             };
             streamController.connect();
         };
+
+        this.factory = factory;
+
     }
 
 
@@ -148,7 +163,7 @@ export class SpectatorClient {
                 const template = /*html*/ `
                     <audio id="speaker-audio" autoplay class="d-none"></audio>
 
-                     <button id="btn-join" class="btn btn-primary position-absolute top-50 start-50 translate-middle">JOIN LIVESTREAM</button>
+                     <button id="btn-join" class="btn btn-primary position-absolute top-50 start-50 translate-middle">CONNECTING</button>
                     
                     
                     <div class="container-fluid h-100"">
@@ -190,7 +205,6 @@ export class SpectatorClient {
 
                 this.parent.append(dom);
 
-                this.initializeWebRTC();
 
                 resolve();
             } catch (error) {
@@ -206,6 +220,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     const client = new SpectatorClient(mainElement);
     client.render().then(p => {
         console.log(`Spectator client rendered. Ready to join.`);
+
+        // ill fix this, but now its a bug in thor-io ClientFactory
+        setTimeout(() => {
+            const joinButton = DOMUtils.get<HTMLButtonElement>("#btn-join");
+            const connectionFailed = client.factory!.IsConnected;
+            if (connectionFailed) {
+                joinButton.textContent = "JOIN LIVESTREAM"
+                joinButton.classList.remove("btn-primary");
+                joinButton.classList.add("btn-success");
+                joinButton.disabled = false;
+
+            } else {
+                joinButton.disabled = true;
+                joinButton.textContent = "CANT CONNECT!"
+                joinButton.classList.toggle("btn-primary");
+                joinButton.classList.add("btn-danger");
+
+            }
+            console.log(`connection to server failed: ${connectionFailed}`)
+        }, 2000);
+
+
     }).catch(e => {
         console.error("Failed to render client:", e);
     });
