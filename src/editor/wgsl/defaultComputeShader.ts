@@ -15,10 +15,7 @@ const AA:i32 = 3;
 
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) invocation_id: vec3u) {
-
    let col:vec3<f32> = vec3<f32>(1.0,1.0,0.0) ; 
-    
-  
     textureStore(outputTexture, invocation_id.xy, vec4<f32>(col, 1.0));
 }
 

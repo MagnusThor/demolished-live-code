@@ -62,4 +62,6 @@ body{
   }
 
 
-  
+  video{
+    aspect-ratio: 16/9;
+  }

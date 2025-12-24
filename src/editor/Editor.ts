@@ -35,7 +35,7 @@ import {
 } from './store/OfflineStorage';
 import axios from 'axios';
 import { basicSetup } from 'codemirror';
-import { connectCanvasToVideo } from '../engine/helpers/connectCanvasToVideo';
+import { connectCanvasToVideo, snapshotFromVideo } from '../engine/helpers/connectCanvasToVideo';
 import { mainShader } from '../engine/renderer/mainShader';
 import { Geometry, rectGeometry } from '../engine/renderer/webgpu/geometry';
 import { Material, defaultWglslVertex, IMaterialShader } from '../engine/renderer/webgpu/material';
@@ -43,6 +43,8 @@ import { WGSLShaderRenderer, initWebGPU } from '../engine/renderer/webgpu/wgslSh
 import { LiveStreamComponent } from '../livestream/LivestreamComponet';
 import { computeShader } from './wgsl/computeShader';
 import { plasmaShader } from './wgsl/defaultFragmentShader';
+import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
+import copy from 'copy-to-clipboard';
 
 
 
@@ -182,38 +184,38 @@ export class Editor {
         return true;
     }
 
+
+   
     toggleCanvasFullScreen(): void {
-        const canvas = DOMUtils.get<HTMLCanvasElement>("canvas");
-        if (!document.fullscreenElement) {
-            canvas.requestFullscreen();
-        } else if (document.exitFullscreen) {
-            document.exitFullscreen();
+        const video = document.querySelector("#video-result") as HTMLVideoElement | null;
+        if (!video) {
+            console.error("Video element with ID '#video-result' not found.");
+            return;
+        }
+        if (document.pictureInPictureElement === video) {
+            document.exitPictureInPicture()
+                .then(() => {
+                    console.log("Exited Picture-in-Picture mode.");
+                    DOMUtils.get("#right-panel").classList.remove("d-none");
+                })
+                .catch(error => {
+                    console.error("Error exiting PiP:", error);
+                    DOMUtils.get("#right-panel").classList.remove("d-none");
+                });
+        } else {
+            video.requestPictureInPicture()
+                .then(() => {
+                    console.log("Entered Picture-in-Picture mode.");
+                    DOMUtils.get("#right-panel").classList.add("d-none");
+                })
+                .catch(error => console.error("Error requesting PiP:", error));
         }
     }
 
-    async compileSource(view: EditorView) {
-        this.onCompile(view).then(result => {
-            // const typeToCompile = this.currentShader.documents[this.sourceIndex].type;
-            // if (typeToCompile == TypeOfShader.Frag) {
-            //     const material = new Material(this.renderer.device, {
-            //         fragment: this.editorView.state.doc.toString(),
-            //         vertex: defaultWglslVertex
-            //     });
-            // } else if (typeToCompile === TypeOfShader.MainFrag) {
-            //     const mainFragSource = this.editorView.state.doc.toString();
-            //     const shader: IMaterialShader = {
-            //         fragment: mainFragSource,
-            //         vertex: defaultMainShader.vertex
-            //     }
-            // }
 
-        }).catch(err => {
-            console.log(err);
-        });
-        return true;
 
-    }
 
+  
     async setupEditor(shader: StoredShader) {
         const { device, adapter, context } = await initWebGPU(document.querySelector("canvas")!);
         this.renderer = new WGSLShaderRenderer(document.querySelector("canvas")!,
@@ -298,40 +300,47 @@ export class Editor {
         }
 
         DOMUtils.on<HTMLButtonElement>("click", "#btn-pip", () => {
-            const video = document.querySelector("#video-result") as HTMLVideoElement | null;
-            if (!video) {
-                console.error("Video element with ID '#video-result' not found.");
-                return;
-            }
-            if (document.pictureInPictureElement === video) {
-                document.exitPictureInPicture()
-                    .then(() => {
-                        console.log("Exited Picture-in-Picture mode.");
-                        DOMUtils.get("#right-panel").classList.remove("d-none");
-                    })
-                    .catch(error => {
-                        console.error("Error exiting PiP:", error);
-                        DOMUtils.get("#right-panel").classList.remove("d-none");
-                    });
-            } else {
-                video.requestPictureInPicture()
-                    .then(() => {
-                        console.log("Entered Picture-in-Picture mode.");
-                        DOMUtils.get("#right-panel").classList.add("d-none");
-                    })
-                    .catch(error => console.error("Error requesting PiP:", error));
-            }
+            this.toggleCanvasFullScreen();
         });
 
-        DOMUtils.get<HTMLButtonElement>("#btn-run-shader").addEventListener("click", (e) => {
+        DOMUtils.on<HTMLElement>("click", "#copy-editor-link", (evt, el) => {
+            const url = `${window.location.origin}/preview/?shader=${this.currentShader.id}`;
+
+      
+
+            copy(url);
+            el!.classList.add("text-success");
+
+        });
+
+        DOMUtils.get<HTMLButtonElement>("#btn-run-shader").addEventListener("click", async (e) => {
             this.currentShader.documents[this.sourceIndex].source = this.editorView.state.doc.toString();
             DOMUtils.get("#btn-run-shader i").classList.toggle("bi-play-btn-fill")
             DOMUtils.get("#btn-run-shader i").classList.toggle("bi-stop-fill")
 
             if (this.isRunning) {
 
+
+
                 DOMUtils.get("#video-result").classList.add("d-none");
                 DOMUtils.get("#result-canvas").classList.remove("d-none");
+
+
+                // always take a snapshot of the result, on stop
+                // quick fix    
+
+                const base64Image = DOMUtils.get<HTMLCanvasElement>("#result-canvas").toDataURL("image/png", .4);
+
+
+                const snapshot = snapshotFromVideo(DOMUtils.get<HTMLVideoElement>("#video-result"), 800/3, 450/3);
+
+                this.currentShader.thumbnail = snapshot!;
+
+
+                console.log(this.currentShader.thumbnail )
+
+
+
 
                 this.renderer.isPaused = true;
 
@@ -365,7 +374,14 @@ export class Editor {
 
         DOMUtils.on("click", "#btn-new", () => {
 
-            const item = new StoredShader(`Shader ${randomStr()}`, "N/A", 1);
+
+
+            const shortName = uniqueNamesGenerator({
+                dictionaries: [adjectives, animals, colors], // colors can be omitted here as not used
+                length: 2
+            });
+
+            const item = new StoredShader(`${shortName}`, "N/A", 1);
 
             const shaderTypeToCreate = parseInt(
                 DOMUtils.get<HTMLInputElement>("#shader-type")!.value);
@@ -383,13 +399,13 @@ export class Editor {
             this.setCurrentShader(item);
             this.storage.save();
 
-            this.updateImmediate(`Shader ${item.name} created...`)
+            this.updateImmediate(`${item.name} created...`)
 
 
         });
 
         DOMUtils.on("click", "#btn-delete", () => {
-            this.updateImmediate(`Shader ${this.currentShader.name} deleted...`)
+            this.updateImmediate(`${this.currentShader.name} deleted...`)
             this.storage.delete(this.currentShader);
             // get the firstShader from the storage,
             let firstShader = this.storage.all()[0];
@@ -397,7 +413,7 @@ export class Editor {
             this.storage.save();
         });
 
-        DOMUtils.on("click", "#btn-canvas-fullscreen", this.toggleCanvasFullScreen)
+
 
         DOMUtils.on("click", "#btn-clone", () => {
             const clone = new StoredShader(`Copy of ${this.currentShader.name}`,
@@ -405,7 +421,7 @@ export class Editor {
             clone.documents = this.currentShader.documents;
             this.storage.insert(clone);
             this.currentShader = clone;
-            this.updateImmediate(`Shader forked, new shader is  ${clone.name} `)
+            this.updateImmediate(`Forked, new shader is ${clone.name} `)
         });
 
         //
@@ -510,6 +526,10 @@ export class Editor {
 
     setCurrentShader(shader: StoredShader): void {
         this.currentShader = shader;
+
+
+        console.log(this.currentShader);
+
         DOMUtils.get<HTMLInputElement>("#shader-name").value = shader.name;
         DOMUtils.get<HTMLInputElement>("#shader-description").value = shader.description;
         // Create a transaction to replace the document
@@ -522,7 +542,7 @@ export class Editor {
         this.editorView.focus();
         this.sourceIndex = 0;
 
-        this.updateImmediate(`Shader "${shader.name}" loaded...`);
+        this.updateImmediate(`${shader.name} loaded...`);
         DOMUtils.get("#current-shadername").textContent = shader.name
 
     }
@@ -532,9 +552,9 @@ export class Editor {
         this.currentShader.name = DOMUtils.get<HTMLInputElement>("#shader-name").value;
         this.currentShader.description = DOMUtils.get<HTMLInputElement>("#shader-description").value;
         this.storage.update(this.currentShader);
-        this.currentShader.thumbnail = this.renderer.canvas.toDataURL();
+        //this.currentShader.thumbnail = this.renderer.canvas.toDataURL();
         this.storage.save();
-        this.updateImmediate(`Shader ${this.currentShader.name} saved...`);
+        this.updateImmediate(`${this.currentShader.name} saved...`);
     }
 
     renderStoredShaders(shaders: Array<StoredShader>): void {
@@ -591,7 +611,7 @@ export class Editor {
     async initStorage(): Promise<StoredShader> {
         return new Promise((resolve, reject) => {
             try {
-                this.storage = new OfflineStorage<StoredShader>("editor");
+                this.storage = new OfflineStorage<StoredShader>("editor-dec");
                 this.storage.init();
                 const lastModified = this.storage.all().sort((a: StoredShader, b: StoredShader) => {
                     return b.lastModified - a.lastModified
@@ -599,7 +619,7 @@ export class Editor {
                 this.renderSourceList(lastModified.documents);
                 resolve(lastModified);
             } catch (err) {
-                this.storage = new OfflineStorage<StoredShader>("editor");
+                this.storage = new OfflineStorage<StoredShader>("editor-dec");
                 this.storage.setup();
                 axios.get<IOfflineGraph<StoredShader>>(`shaders/default.json?rnd=${randomStr()}`).then(
                     model => {

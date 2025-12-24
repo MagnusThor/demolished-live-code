@@ -14,8 +14,6 @@ const AA:i32 = 3;
 //@compute ##workgroup_size ( for auto detect , but seems a bit tricky/fuzzy still in WebGPU)
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) invocation_id: vec3u) {
-
-
     
     let R: vec2<f32> = uniforms.resolution.xy;
     

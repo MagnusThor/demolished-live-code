@@ -27,3 +27,27 @@ export function connectCanvasToVideo(width: number, height: number, frameRate: n
 
     console.log("Canvas stream connected to video element successfully.");
 }
+
+
+export function snapshotFromVideo(
+  video: HTMLVideoElement,
+  width: number,
+  height: number,
+  quality = 0.4
+): string | null {
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    console.warn("Video frame not ready yet");
+    return null;
+  }
+
+  const snapCanvas = document.createElement("canvas");
+  snapCanvas.width = width;
+  snapCanvas.height = height;
+
+  const ctx = snapCanvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.drawImage(video, 0, 0, width, height);
+
+  return snapCanvas.toDataURL("image/png", quality);
+}
