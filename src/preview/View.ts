@@ -170,7 +170,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     await view.init();
 
     DOMUtils.on("click", "#go-to-editor", () => {
-        location.href =
-            `${location.origin}/?shader=${shaderUUID}`;
+        location.href = `https://magnusthor.github.io/demolished-live-code/public/?shader=${shaderUUID}`;
     });
 });
