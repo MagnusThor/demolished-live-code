@@ -304,7 +304,7 @@ export class Editor {
         });
 
         DOMUtils.on<HTMLElement>("click", "#copy-editor-link", (evt, el) => {
-            const url = `${window.location.origin}${location.pathname}?shader/preview/?shader=${this.currentShader.id}`;
+            const url = `${window.location.origin}${location.pathname}preview/?shader=${this.currentShader.id}`;
 
             copy(url);
             el!.classList.add("text-success");
